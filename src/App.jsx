@@ -6,6 +6,14 @@ import PuppetCharacterPanel from './components/puppet/PuppetCharacterPanel.jsx';
 import PuppetTimeline from './components/timeline/PuppetTimeline.jsx';
 import usePuppetMocap from './hooks/usePuppetMocap.js';
 import { createRig } from './utils/PuppetRig.js';
+import { createFaceExpressionEngine, drawExpressionOnCharacter, EXPRESSIONS } from './utils/PuppetFaceExpressions.js';
+import { createPhysicsLayer, stepPhysicsLayer, applyWindToLayer, createHairLayer } from './utils/PuppetPhysics.js';
+import { createArmIK, createLegIK, solveFABRIK } from './utils/PuppetIK.js';
+import { exportMP4, downloadFile } from './utils/PuppetExporter.js';
+import { createHead360Rig, updateHead360 } from './utils/PuppetHead360.js';
+import PuppetScene from './components/scene/PuppetScene.jsx';
+import PuppetAssetLibrary from './components/library/PuppetAssetLibrary.jsx';
+import useFaceExpression from './hooks/useFaceExpression.js';
 import { createLipSyncEngine } from './utils/PuppetLipSync.js';
 import { createRecorder, downloadBlob, exportFramesAsJSON } from './utils/PuppetRecorder.js';
 import './styles/puppet.css';
@@ -46,7 +54,35 @@ export default function App() {
     setRig({ ...newRig });
   }, []);
 
-  const { status: mocapStatus, fps, start: startMocap, stop: stopMocap } =
+  // Face expression
+  const [faceOn, setFaceOn] = useState(false);
+  const faceEngineRef = useRef(null);
+  const [expression, setExpression] = useState({ ...EXPRESSIONS.neutral });
+  const [currentScene, setCurrentScene] = useState({ id:'dark', bg:'#06060f' });
+  const [props, setProps] = useState([]);
+
+  const toggleFace = async () => {
+    if (faceOn) {
+      faceEngineRef.current?.stop(); faceEngineRef.current = null;
+      setFaceOn(false); setStatus('Face tracking stopped');
+    } else {
+      const engine = createFaceExpressionEngine();
+      await engine.start(videoRef.current, (expr) => setExpression(expr));
+      faceEngineRef.current = engine;
+      setFaceOn(true); setStatus('Face tracking running');
+    }
+  };
+
+  const handleExportMP4 = async () => {
+    const canvas = canvasCompRef.current?.getCanvas();
+    if (!canvas) return;
+    setStatus('Exporting MP4...');
+    const result = await exportMP4(canvas, 10, 30);
+    downloadFile(result.blob, result.filename);
+    setStatus('MP4 exported!');
+  };
+
+    const { status: mocapStatus, fps, start: startMocap, stop: stopMocap } =
     usePuppetMocap(videoRef, rigRef, onRigUpdate, mocapOn);
 
   // Lip sync tick
@@ -158,12 +194,34 @@ export default function App() {
           </label>
 
           {/* Webcam preview */}
+          <button className="sp-btn sp-btn--teal" style={{ width:'auto', padding:'4px 10px', fontSize:10 }} onClick={handleExportMP4}>
+            🎬 Export MP4
+          </button>
           {mocapOn && (
             <div style={{ marginTop:8 }}>
               <div className="sp-section-label">Webcam</div>
               <video ref={videoRef} autoPlay muted playsInline style={{ width:'100%', borderRadius:8, border:'1px solid var(--border)', transform:'scaleX(-1)' }} />
             </div>
           )}
+
+          {/* Face Expressions */}
+          <button className={`sp-btn ${faceOn ? 'sp-btn--danger' : 'sp-btn--orange'}`} onClick={toggleFace}>
+            {faceOn ? '■ Stop Face Track' : '😊 Face Expressions'}
+          </button>
+
+          {/* Scene */}
+          <div style={{ marginTop:8 }}>
+            <PuppetScene onApply={setCurrentScene} currentScene={currentScene} />
+          </div>
+
+          {/* Asset Library */}
+          <div style={{ marginTop:8 }}>
+            <div className="sp-section-label">Asset Library</div>
+            <PuppetAssetLibrary
+              onAddProp={p => setProps(prev => [...prev, { ...p, x:0.5, y:0.5 }])}
+              onSetExpression={id => setExpression(EXPRESSIONS[id] || EXPRESSIONS.neutral)}
+            />
+          </div>
 
           {/* Characters */}
           <div style={{ marginTop:8 }}>
@@ -192,6 +250,9 @@ export default function App() {
           <span style={{ fontSize:10, color:'var(--muted)' }}>
             {characters.length} character{characters.length !== 1 ? 's' : ''} in scene
           </span>
+          <button className="sp-btn sp-btn--teal" style={{ width:'auto', padding:'4px 10px', fontSize:10 }} onClick={handleExportMP4}>
+            🎬 Export MP4
+          </button>
           {mocapOn && (
             <div className="sp-hud" style={{ position:'static', background:'transparent', padding:0 }}>
               <span className="sp-hud-dot sp-hud-dot--live" />
@@ -207,6 +268,7 @@ export default function App() {
             characters={characters}
             activeRig={rig}
             mouthShape={mouthShape}
+            expression={expression}
             showSkeleton={showSkeleton}
             showGrid={showGrid}
           />
