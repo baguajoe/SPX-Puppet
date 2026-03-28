@@ -331,8 +331,17 @@ export default function App() {
 
           <div className="sp-canvas-area" style={{ display: "flex", flexDirection: "row" }}>
             {activePanel === "draw" && (
-              <div style={{ position:"absolute", inset:0, zIndex:10, display:"flex" }}>
-                <DrawPanel onExportCharacter={(char) => { addCharacter(char); setActivePanel("characters"); }} />
+              <div style={{ position:"absolute", inset:0, zIndex:10, display:"flex", flexDirection:"column" }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"4px 10px", background:"#0d1117", borderBottom:"1px solid #21262d", flexShrink:0 }}>
+                  <span style={{ fontSize:11, color:"#00ffc8", fontWeight:600 }}>✏️ Draw Character</span>
+                  <button onClick={() => setActivePanel("characters")}
+                    style={{ padding:"2px 10px", border:"1px solid #21262d", borderRadius:4, background:"transparent", color:"#6b7280", cursor:"pointer", fontSize:11 }}>
+                    ✕ Close
+                  </button>
+                </div>
+                <div style={{ flex:1, overflow:"hidden" }}>
+                  <DrawPanel onExportCharacter={(char) => { addCharacter(char); setActivePanel("characters"); }} />
+                </div>
               </div>
             )}
             <StatsOverlay fps={fps} show={showStats} />
