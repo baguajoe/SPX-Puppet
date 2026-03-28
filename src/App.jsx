@@ -74,6 +74,21 @@ export default function App() {
   const { fps, start: startMocap, stop: stopMocap } =
     usePuppetMocap(videoRef, rigRef, onRigUpdate, mocapOn);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.code === 'Space') { e.preventDefault(); isPlaying ? pausePlayback() : startPlayback(); }
+      if (e.key === 'r' && !e.ctrlKey) { isRecording ? stopRecording() : startRecording(); }
+      if (e.key === 'f') { setShowGrid(v => !v); }
+      if (e.key === 'b') { setShowSkeleton(v => !v); }
+      if (e.key === 'Escape') { setActivePanel('characters'); }
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleMenuAction('save'); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isPlaying, isRecording]);
+
   useEffect(() => {
     if (!lipSyncOn) return;
     const id = setInterval(() => {
