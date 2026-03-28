@@ -1,0 +1,20 @@
+
+:root {
+  --bg:      #06060f;
+  --panel:   #0d1117;
+  --border:  #21262d;
+  --teal:    #00ffc8;
+  --orange:  #FF6600;
+  --text:    #e0e0e0;
+  --muted:   #6b7280;
+  --danger:  #ef4444;
+  --purple:  #7c3aed;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: "JetBrains Mono", monospace; overflow: hidden; }
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--panel); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--teal); }
