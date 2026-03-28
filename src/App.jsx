@@ -9,6 +9,7 @@ import CollabPanel from "./components/collab/CollabPanel.jsx";
 import StreamPanel from "./components/streaming/StreamPanel.jsx";
 import AIVoicePanel from "./components/puppet/AIVoicePanel.jsx";
 import MenuBar from "./components/puppet/MenuBar.jsx";
+import DrawPanel from "./components/puppet/DrawPanel.jsx";
 import GeneralToolbar from "./components/puppet/GeneralToolbar.jsx";
 import BoneToolbar from "./components/puppet/BoneToolbar.jsx";
 import LayerPanel from "./components/puppet/LayerPanel.jsx";
@@ -29,6 +30,8 @@ const PANELS = [
   ["aivoice",    "🔊", "Voice"],
   ["collab",     "👥", "Collab"],
   ["stream",     "📡", "Stream"],
+  ["draw",       "✏️",  "Draw"],
+
 ];
 
 export default function App() {
@@ -282,7 +285,10 @@ export default function App() {
             {activePanel === "collab" && (
               <CollabPanel onRigReceived={onRigUpdate} onExpressionReceived={setExpression} />
             )}
-            {activePanel === "stream" && (
+            {activePanel === "draw" && (
+            <DrawPanel onExportCharacter={addCharacter} />
+          )}
+          {activePanel === "stream" && (
               <StreamPanel canvasRef={canvasCompRef} webcamRef={videoRef} setStatus={setStatus} />
             )}
 
