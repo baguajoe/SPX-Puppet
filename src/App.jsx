@@ -285,9 +285,7 @@ export default function App() {
             {activePanel === "collab" && (
               <CollabPanel onRigReceived={onRigUpdate} onExpressionReceived={setExpression} />
             )}
-            {activePanel === "draw" && (
-            <DrawPanel onExportCharacter={addCharacter} />
-          )}
+            {activePanel === "draw" && null}
           {activePanel === "stream" && (
               <StreamPanel canvasRef={canvasCompRef} webcamRef={videoRef} setStatus={setStatus} />
             )}
@@ -331,7 +329,12 @@ export default function App() {
             </button>
           </div>
 
-          <div className="sp-canvas-area">
+          <div className="sp-canvas-area" style={{ display: "flex", flexDirection: "row" }}>
+            {activePanel === "draw" && (
+              <div style={{ position:"absolute", inset:0, zIndex:10, display:"flex" }}>
+                <DrawPanel onExportCharacter={(char) => { addCharacter(char); setActivePanel("characters"); }} />
+              </div>
+            )}
             <StatsOverlay fps={fps} show={showStats} />
             <PuppetCanvas
               ref={canvasCompRef}
