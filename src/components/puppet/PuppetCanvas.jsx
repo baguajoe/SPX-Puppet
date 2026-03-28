@@ -93,7 +93,7 @@ function drawSkeletonOverlay(ctx, rig, w, h, showSkeleton) {
 }
 
 const PuppetCanvas = forwardRef(function PuppetCanvas(
-  { characters = [], activeRig, mouthShape, showSkeleton = true, showGrid = true, onCanvasReady },
+  { characters = [], activeRig, mouthShape, expression, showSkeleton = true, showGrid = true, scene, onCanvasReady },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -116,9 +116,29 @@ const PuppetCanvas = forwardRef(function PuppetCanvas(
 
     ctx.clearRect(0, 0, W, H);
 
-    // Grid background
+    // Scene background
+    if (scene && scene.gradient) {
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      scene.gradient.forEach((color, i) => grad.addColorStop(i / (scene.gradient.length - 1), color));
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = (scene && scene.bg) || '#06060f';
+    }
+    ctx.fillRect(0, 0, W, H);
+
+    // Floor line
+    if (scene && scene.showFloor) {
+      ctx.strokeStyle = scene.floorColor || '#1a1a2e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, H * 0.85);
+      ctx.lineTo(W, H * 0.85);
+      ctx.stroke();
+    }
+
+    // Grid overlay
     if (showGrid) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
       for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
       for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
     }
@@ -144,7 +164,7 @@ const PuppetCanvas = forwardRef(function PuppetCanvas(
     }
 
     rafRef.current = requestAnimationFrame(draw);
-  }, [characters, activeRig, mouthShape, showSkeleton, showGrid]);
+  }, [characters, activeRig, mouthShape, showSkeleton, showGrid, scene]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
