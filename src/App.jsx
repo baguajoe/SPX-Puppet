@@ -2,36 +2,45 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import PuppetCanvas from "./components/puppet/PuppetCanvas.jsx";
 import PuppetCharacterPanel from "./components/puppet/PuppetCharacterPanel.jsx";
 import PuppetTimeline from "./components/timeline/PuppetTimeline.jsx";
+import KeyframeTimeline from "./components/timeline/KeyframeTimeline.jsx";
 import PuppetScene from "./components/scene/PuppetScene.jsx";
 import PuppetAssetLibrary from "./components/library/PuppetAssetLibrary.jsx";
 import PuppetMarketplace from "./components/library/PuppetMarketplace.jsx";
 import CollabPanel from "./components/collab/CollabPanel.jsx";
 import StreamPanel from "./components/streaming/StreamPanel.jsx";
 import AIVoicePanel from "./components/puppet/AIVoicePanel.jsx";
-import MenuBar from "./components/puppet/MenuBar.jsx";
 import DrawPanel from "./components/puppet/DrawPanel.jsx";
+import MenuBar from "./components/puppet/MenuBar.jsx";
 import GeneralToolbar from "./components/puppet/GeneralToolbar.jsx";
 import BoneToolbar from "./components/puppet/BoneToolbar.jsx";
 import LayerPanel from "./components/puppet/LayerPanel.jsx";
 import StatsOverlay from "./components/puppet/StatsOverlay.jsx";
+import SceneSequencer from "./components/film/SceneSequencer.jsx";
+import CameraAnimator from "./components/film/CameraAnimator.jsx";
+import DialogueSystem from "./components/film/DialogueSystem.jsx";
+import SoundtrackPanel from "./components/film/SoundtrackPanel.jsx";
 import usePuppetMocap from "./hooks/usePuppetMocap.js";
 import { createRig } from "./utils/PuppetRig.js";
 import { createLipSyncEngine } from "./utils/PuppetLipSync.js";
 import { createRecorder, exportFramesAsJSON } from "./utils/PuppetRecorder.js";
 import { createFaceExpressionEngine, EXPRESSIONS } from "./utils/PuppetFaceExpressions.js";
 import { exportMP4, downloadFile } from "./utils/PuppetExporter.js";
+import { exportFullFilm, downloadBlob } from "./utils/FilmExporter.js";
 import "./styles/puppet.css";
 
 const PANELS = [
-  ["characters", "🎭", "Chars"],
-  ["scene",      "🌆", "Scene"],
-  ["library",    "📦", "Lib"],
-  ["marketplace","🛒", "Market"],
-  ["aivoice",    "🔊", "Voice"],
-  ["collab",     "👥", "Collab"],
-  ["stream",     "📡", "Stream"],
-  ["draw",       "✏️",  "Draw"],
-
+  ["characters","🎭","Chars"],
+  ["scene",     "🌆","Scene"],
+  ["library",   "📦","Lib"],
+  ["marketplace","🛒","Market"],
+  ["aivoice",   "🔊","Voice"],
+  ["collab",    "👥","Collab"],
+  ["stream",    "📡","Stream"],
+  ["draw",      "✏️","Draw"],
+  ["camera",    "🎥","Camera"],
+  ["dialogue",  "💬","Dialog"],
+  ["soundtrack","🎵","Sound"],
+  ["film",      "🎬","Film"],
 ];
 
 export default function App() {
@@ -55,8 +64,16 @@ export default function App() {
   const [downloadUrl,    setDownloadUrl]    = useState(null);
   const [status,         setStatus]         = useState("Ready");
   const [activeTool,     setActiveTool]     = useState("select");
-  const [transform,      setTransform]      = useState({ x: 0, y: 0, w: 100, h: 100, r: 0 });
+  const [transform,      setTransform]      = useState({ x:0, y:0, w:100, h:100, r:0 });
   const [showStats,      setShowStats]      = useState(true);
+  const [keyframes,      setKeyframes]      = useState({});
+  const [scenes,         setScenes]         = useState([{ id:"scene_1", name:"Scene 1", duration:10, dialogues:[], characters:[] }]);
+  const [activeScene,    setActiveScene]    = useState("scene_1");
+  const [dialogues,      setDialogues]      = useState([]);
+  const [currentBGMusic, setCurrentBGMusic] = useState(null);
+  const [cameraMove,     setCameraMove]     = useState("static");
+  const [exportProgress, setExportProgress] = useState(null);
+  const [useKeyframes,   setUseKeyframes]   = useState(false);
 
   const rigRef          = useRef(createRig(640, 480));
   const videoRef        = useRef(null);
@@ -74,20 +91,18 @@ export default function App() {
   const { fps, start: startMocap, stop: stopMocap } =
     usePuppetMocap(videoRef, rigRef, onRigUpdate, mocapOn);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.code === 'Space') { e.preventDefault(); isPlaying ? pausePlayback() : startPlayback(); }
-      if (e.key === 'r' && !e.ctrlKey) { isRecording ? stopRecording() : startRecording(); }
-      if (e.key === 'f') { setShowGrid(v => !v); }
-      if (e.key === 'b') { setShowSkeleton(v => !v); }
-      if (e.key === 'Escape') { setActivePanel('characters'); }
-      if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleMenuAction('save'); }
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      if (e.code === "Space") { e.preventDefault(); isPlaying ? pausePlayback() : startPlayback(); }
+      if (e.key === "f") setShowGrid((v) => !v);
+      if (e.key === "b") setShowSkeleton((v) => !v);
+      if (e.key === "Escape") setActivePanel("characters");
+      if (e.ctrlKey && e.key === "s") { e.preventDefault(); handleMenuAction("save"); }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [isPlaying, isRecording]);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isPlaying]);
 
   useEffect(() => {
     if (!lipSyncOn) return;
@@ -141,11 +156,7 @@ export default function App() {
   const stopRecording = async () => {
     const result = recorderRef.current && await recorderRef.current.stop();
     setIsRecording(false);
-    if (result) {
-      setRecordedFrames(result.frames);
-      setDownloadUrl(result.url);
-      setStatus("Saved " + result.frames.length + " frames");
-    }
+    if (result) { setRecordedFrames(result.frames); setDownloadUrl(result.url); setStatus("Saved " + result.frames.length + " frames"); }
   };
 
   const startPlayback = () => {
@@ -153,9 +164,7 @@ export default function App() {
     setPlaybackIdx(0); setIsPlaying(true);
     playIntervalRef.current = setInterval(() => {
       setPlaybackIdx((i) => {
-        if (i >= recordedFrames.length - 1) {
-          clearInterval(playIntervalRef.current); setIsPlaying(false); return 0;
-        }
+        if (i >= recordedFrames.length - 1) { clearInterval(playIntervalRef.current); setIsPlaying(false); return 0; }
         return i + 1;
       });
     }, 1000 / 30);
@@ -164,20 +173,9 @@ export default function App() {
   const pausePlayback = () => { clearInterval(playIntervalRef.current); setIsPlaying(false); };
   const stopPlayback  = () => { clearInterval(playIntervalRef.current); setIsPlaying(false); setPlaybackIdx(0); };
 
-  const addCharacter = (char) => {
-    setCharacters((prev) => [...prev, char]);
-    setActiveId(char.id);
-    setStatus("Added: " + char.name);
-  };
-
-  const removeCharacter = (id) => {
-    setCharacters((prev) => prev.filter((c) => c.id !== id));
-    setActiveId((prev) => (prev === id ? null : prev));
-  };
-
-  const updateCharacter = (id, updates) => {
-    setCharacters((prev) => prev.map((c) => c.id === id ? { ...c, ...updates } : c));
-  };
+  const addCharacter = (char) => { setCharacters((p) => [...p, char]); setActiveId(char.id); setStatus("Added: " + char.name); };
+  const removeCharacter = (id) => { setCharacters((p) => p.filter((c) => c.id !== id)); setActiveId((p) => p === id ? null : p); };
+  const updateCharacter = (id, updates) => { setCharacters((p) => p.map((c) => c.id === id ? { ...c, ...updates } : c)); };
 
   const handleExportMP4 = async () => {
     const canvas = canvasCompRef.current && canvasCompRef.current.getCanvas();
@@ -190,168 +188,192 @@ export default function App() {
 
   const handleMenuAction = (action) => {
     if (action === "save") {
-      const data = JSON.stringify({ characters, version: "1.0" });
-      const blob = new Blob([data], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "puppet_project.json"; a.click();
+      const blob = new Blob([JSON.stringify({ characters, scenes, dialogues, version:"1.0" })], { type:"application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "puppet_project.json"; a.click();
       setStatus("Project saved");
-    } else if (action === "export_json") {
-      exportFramesAsJSON(recordedFrames);
-    } else if (action === "export_mp4") {
-      handleExportMP4();
-    } else if (action === "toggle_skeleton") {
-      setShowSkeleton((v) => !v);
-    } else if (action === "toggle_grid") {
-      setShowGrid((v) => !v);
-    } else if (action === "play") {
-      isPlaying ? pausePlayback() : startPlayback();
-    } else if (action === "new") {
-      setCharacters([]); setRecordedFrames([]); setStatus("New project");
-    } else if (action === "toggle_fps") {
-      setShowStats((v) => !v);
-    }
+    } else if (action === "export_mp4") { handleExportMP4(); }
+    else if (action === "toggle_skeleton") { setShowSkeleton((v) => !v); }
+    else if (action === "toggle_grid") { setShowGrid((v) => !v); }
+    else if (action === "toggle_fps") { setShowStats((v) => !v); }
+    else if (action === "new") { setCharacters([]); setRecordedFrames([]); setDialogues([]); setStatus("New project"); }
+    else if (action === "play") { isPlaying ? pausePlayback() : startPlayback(); }
+  };
+
+  const addScene = () => {
+    const id = "scene_" + Date.now();
+    setScenes((p) => [...p, { id, name:"Scene "+(p.length+1), duration:10, dialogues:[], characters:[] }]);
+    setActiveScene(id); setStatus("Scene added");
+  };
+
+  const deleteScene = (id) => {
+    setScenes((p) => p.filter((s) => s.id !== id));
+    if (activeScene === id && scenes.length > 1) setActiveScene(scenes[0].id);
+  };
+
+  const reorderScene = (from, to) => {
+    setScenes((p) => { const arr = [...p]; const [item] = arr.splice(from, 1); arr.splice(to, 0, item); return arr; });
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100vh", overflow:"hidden" }}>
       <MenuBar onAction={handleMenuAction} />
-      <GeneralToolbar
-        activeTool={activeTool} setActiveTool={setActiveTool}
+      <GeneralToolbar activeTool={activeTool} setActiveTool={setActiveTool}
         transform={transform} onTransformChange={setTransform}
-        onUndo={() => setStatus("Undo")} onRedo={() => setStatus("Redo")}
-      />
+        onUndo={() => setStatus("Undo")} onRedo={() => setStatus("Redo")} />
       <BoneToolbar onAction={(a) => setStatus("Bone: " + a)} />
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
         {/* Sidebar */}
-        <div className="sp-sidebar" style={{ width: 220 }}>
+        <div className="sp-sidebar" style={{ width:220 }}>
           <div className="sp-sidebar-header">
             <span className="sp-logo">SPX</span>
-            <span style={{ fontWeight: 700, fontSize: 14 }}>Puppet</span>
-            <span className={"sp-chip " + (mocapOn ? "sp-chip--on" : "sp-chip--off")}
-              style={{ marginLeft: "auto", fontSize: 9 }}>
+            <span style={{ fontWeight:700, fontSize:14 }}>Puppet</span>
+            <span className={"sp-chip " + (mocapOn ? "sp-chip--on" : "sp-chip--off")} style={{ marginLeft:"auto", fontSize:9 }}>
               {mocapOn ? ("LIVE " + fps + "fps") : "Off"}
             </span>
           </div>
 
-          {/* Panel nav */}
-          <div style={{ display: "flex", gap: 2, padding: "5px 6px", borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
+          {/* Panel nav — 2 rows of 6 */}
+          <div style={{ display:"flex", gap:2, padding:"4px 5px", borderBottom:"1px solid var(--border)", flexWrap:"wrap" }}>
             {PANELS.map(([id, icon, label]) => (
               <button key={id} onClick={() => setActivePanel(id)}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-                  padding: "4px 5px", borderRadius: 4, border: "1px solid", minWidth: 32,
-                  borderColor: activePanel === id ? "var(--teal)" : "var(--border)",
-                  background: activePanel === id ? "rgba(0,255,200,0.1)" : "transparent",
-                  color: activePanel === id ? "var(--teal)" : "var(--muted)",
-                  cursor: "pointer" }}>
-                <span style={{ fontSize: 12 }}>{icon}</span>
-                <span style={{ fontSize: 7, lineHeight: 1 }}>{label}</span>
+                style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:1,
+                  padding:"3px 4px", borderRadius:4, border:"1px solid", minWidth:30, flex:"0 0 auto",
+                  borderColor: activePanel===id ? "var(--teal)" : "var(--border)",
+                  background:  activePanel===id ? "rgba(0,255,200,0.1)" : "transparent",
+                  color:       activePanel===id ? "var(--teal)" : "var(--muted)",
+                  cursor:"pointer" }}>
+                <span style={{ fontSize:11 }}>{icon}</span>
+                <span style={{ fontSize:7, lineHeight:1 }}>{label}</span>
               </button>
             ))}
           </div>
 
           {/* Live capture */}
-          <div style={{ padding: "7px 8px", borderBottom: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ padding:"6px 8px", borderBottom:"1px solid var(--border)", display:"flex", flexDirection:"column", gap:4 }}>
             <button className={"sp-btn " + (mocapOn ? "sp-btn--danger" : "sp-btn--primary")} onClick={toggleMocap}>
               {mocapOn ? "■ Stop MoCap" : "▶ Start MoCap"}
             </button>
-            <div style={{ display: "flex", gap: 5 }}>
-              <button className={"sp-btn " + (lipSyncOn ? "sp-btn--danger" : "sp-btn--teal")}
-                style={{ flex: 1 }} onClick={toggleLipSync}>
+            <div style={{ display:"flex", gap:4 }}>
+              <button className={"sp-btn " + (lipSyncOn ? "sp-btn--danger" : "sp-btn--teal")} style={{ flex:1 }} onClick={toggleLipSync}>
                 {lipSyncOn ? "■ Lip" : "🎤 Lip"}
               </button>
-              <button className={"sp-btn " + (faceOn ? "sp-btn--danger" : "sp-btn--orange")}
-                style={{ flex: 1 }} onClick={toggleFace}>
+              <button className={"sp-btn " + (faceOn ? "sp-btn--danger" : "sp-btn--orange")} style={{ flex:1 }} onClick={toggleFace}>
                 {faceOn ? "■ Face" : "😊 Face"}
               </button>
             </div>
             {mocapOn && (
               <video ref={videoRef} autoPlay muted playsInline
-                style={{ width: "100%", borderRadius: 6, border: "1px solid var(--border)", transform: "scaleX(-1)", display: "block" }} />
+                style={{ width:"100%", borderRadius:6, border:"1px solid var(--border)", transform:"scaleX(-1)", display:"block" }} />
             )}
           </div>
 
           {/* Panel content */}
           <div className="sp-sidebar-body">
             {activePanel === "characters" && (
-              <PuppetCharacterPanel
-                characters={characters} activeId={activeId}
-                onAdd={addCharacter} onSelect={setActiveId}
-                onRemove={removeCharacter}
-                onPositionChange={(id, updates) => updateCharacter(id, updates)}
-              />
+              <PuppetCharacterPanel characters={characters} activeId={activeId}
+                onAdd={addCharacter} onSelect={setActiveId} onRemove={removeCharacter}
+                onPositionChange={(id, updates) => updateCharacter(id, updates)} />
             )}
-            {activePanel === "scene" && (
-              <PuppetScene onApply={setCurrentScene} currentScene={currentScene} />
-            )}
+            {activePanel === "scene" && <PuppetScene onApply={setCurrentScene} currentScene={currentScene} />}
             {activePanel === "library" && (
               <PuppetAssetLibrary
-                onAddProp={(p) => setProps((prev) => [...prev, { ...p, x: 0.5, y: 0.5 }])}
-                onSetExpression={(id) => setExpression(EXPRESSIONS[id] || EXPRESSIONS.neutral)}
-              />
+                onAddProp={(p) => setProps((prev) => [...prev, { ...p, x:0.5, y:0.5 }])}
+                onSetExpression={(id) => setExpression(EXPRESSIONS[id] || EXPRESSIONS.neutral)} />
             )}
-            {activePanel === "marketplace" && (
-              <PuppetMarketplace onInstall={addCharacter} />
+            {activePanel === "marketplace" && <PuppetMarketplace onInstall={addCharacter} />}
+            {activePanel === "aivoice" && <AIVoicePanel onMouthShape={setMouthShape} setStatus={setStatus} />}
+            {activePanel === "collab" && <CollabPanel onRigReceived={onRigUpdate} onExpressionReceived={setExpression} />}
+            {activePanel === "stream" && <StreamPanel canvasRef={canvasCompRef} webcamRef={videoRef} setStatus={setStatus} />}
+            {activePanel === "camera" && (
+              <CameraAnimator currentMove={cameraMove}
+                onApplyMove={(move) => { setCameraMove(move); setStatus("Camera: " + move); }}
+                onKeyframe={(track) => {
+                  setKeyframes((prev) => ({ ...prev, [track]: [...(prev[track]||[]), { frame:playbackIdx }] }));
+                  setStatus("Camera keyframe @ frame " + playbackIdx);
+                }} />
             )}
-            {activePanel === "aivoice" && (
-              <AIVoicePanel onMouthShape={setMouthShape} setStatus={setStatus} />
+            {activePanel === "dialogue" && (
+              <DialogueSystem characters={characters} dialogues={dialogues} currentFrame={playbackIdx} fps={30}
+                onAddDialogue={(d) => { setDialogues((prev) => [...prev, d]); setStatus("Dialogue added"); }} />
             )}
-            {activePanel === "collab" && (
-              <CollabPanel onRigReceived={onRigUpdate} onExpressionReceived={setExpression} />
+            {activePanel === "soundtrack" && (
+              <SoundtrackPanel currentBGMusic={currentBGMusic}
+                onSetBGMusic={(m) => { setCurrentBGMusic(m); setStatus("Music: " + m.label); }}
+                onPlaySFX={(sfx) => setStatus("SFX: " + sfx.label)} />
             )}
-            {activePanel === "draw" && null}
-          {activePanel === "stream" && (
-              <StreamPanel canvasRef={canvasCompRef} webcamRef={videoRef} setStatus={setStatus} />
+            {activePanel === "film" && (
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                <div style={{ fontSize:10, color:"#6b7280", letterSpacing:1, textTransform:"uppercase" }}>Film Export</div>
+                <div style={{ fontSize:11, color:"#e0e0e0" }}>
+                  {scenes.length} scene{scenes.length!==1?"s":""} total
+                </div>
+                {exportProgress && (
+                  <div style={{ padding:8, background:"rgba(0,255,200,0.05)", border:"1px solid #00ffc8", borderRadius:6, fontSize:11, color:"#00ffc8" }}>
+                    Exporting scene {exportProgress.scene+1}/{exportProgress.total}...
+                  </div>
+                )}
+                <button className="sp-btn sp-btn--teal" onClick={async () => {
+                  const canvas = canvasCompRef.current && canvasCompRef.current.getCanvas();
+                  if (!canvas) return;
+                  setStatus("Exporting film...");
+                  const result = await exportFullFilm(scenes, canvas, 30, setExportProgress);
+                  downloadBlob(result.blob, "spx_film.webm");
+                  setExportProgress(null); setStatus("Film exported!");
+                }}>🎬 Export Full Film</button>
+                <button className="sp-btn" onClick={() => {
+                  const snap = canvasCompRef.current && canvasCompRef.current.getDataURL();
+                  setScenes((prev) => prev.map((s) => s.id===activeScene ? { ...s, thumbnail:snap } : s));
+                  setStatus("Thumbnail captured");
+                }}>📸 Capture Thumbnail</button>
+                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"var(--muted)", cursor:"pointer" }}>
+                  <input type="checkbox" checked={useKeyframes} onChange={(e) => setUseKeyframes(e.target.checked)} />
+                  Keyframe Timeline
+                </label>
+              </div>
             )}
 
-            {/* View options always visible */}
-            <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+            {/* View — always visible */}
+            <div style={{ marginTop:10, borderTop:"1px solid var(--border)", paddingTop:8 }}>
               <div className="sp-section-label">View</div>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)", cursor: "pointer", marginBottom: 4 }}>
-                <input type="checkbox" checked={showSkeleton} onChange={(e) => setShowSkeleton(e.target.checked)} />
-                Show Skeleton
+              <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--muted)", cursor:"pointer", marginBottom:3 }}>
+                <input type="checkbox" checked={showSkeleton} onChange={(e) => setShowSkeleton(e.target.checked)} /> Skeleton
               </label>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)", cursor: "pointer", marginBottom: 4 }}>
-                <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />
-                Show Grid
+              <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--muted)", cursor:"pointer", marginBottom:3 }}>
+                <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} /> Grid
               </label>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted)", cursor: "pointer" }}>
-                <input type="checkbox" checked={showStats} onChange={(e) => setShowStats(e.target.checked)} />
-                Show FPS Stats
+              <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--muted)", cursor:"pointer" }}>
+                <input type="checkbox" checked={showStats} onChange={(e) => setShowStats(e.target.checked)} /> FPS Stats
               </label>
             </div>
           </div>
 
-          <div style={{ padding: "5px 10px", borderTop: "1px solid var(--border)", fontSize: 10, color: "var(--muted)" }}>
-            {status}
-          </div>
+          <div style={{ padding:"5px 10px", borderTop:"1px solid var(--border)", fontSize:10, color:"var(--muted)" }}>{status}</div>
         </div>
 
         {/* Main viewport */}
         <div className="sp-main">
           <div className="sp-toolbar">
             <span className="sp-toolbar-title">SPX Puppet</span>
-            <span style={{ fontSize: 10, color: "var(--muted)", marginRight: 8 }}>
-              {characters.length} character{characters.length !== 1 ? "s" : ""}
-            </span>
-            {mocapOn && (
-              <span style={{ fontSize: 10, color: "var(--danger)", marginRight: 8 }}>LIVE {fps}fps</span>
-            )}
-            <button className="sp-btn sp-btn--teal"
-              style={{ width: "auto", padding: "3px 10px", fontSize: 10 }} onClick={handleExportMP4}>
+            <span style={{ fontSize:10, color:"var(--muted)", marginRight:6 }}>{characters.length} chars</span>
+            {mocapOn && <span style={{ fontSize:10, color:"var(--danger)", marginRight:6 }}>LIVE {fps}fps</span>}
+            <button className="sp-btn" style={{ width:"auto", padding:"2px 8px", fontSize:10 }}
+              onClick={() => { const c = characters.find((ch) => ch.id === activeId); if(c) updateCharacter(activeId, { scale:-(c.scale||1) }); }}>
+              Flip
+            </button>
+            <button className="sp-btn sp-btn--teal" style={{ width:"auto", padding:"2px 8px", fontSize:10 }} onClick={handleExportMP4}>
               Export MP4
             </button>
           </div>
 
-          <div className="sp-canvas-area" style={{ display: "flex", flexDirection: "row" }}>
+          <div className="sp-canvas-area">
             {activePanel === "draw" && (
               <div style={{ position:"absolute", inset:0, zIndex:10, display:"flex", flexDirection:"column" }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"4px 10px", background:"#0d1117", borderBottom:"1px solid #21262d", flexShrink:0 }}>
-                  <span style={{ fontSize:11, color:"#00ffc8", fontWeight:600 }}>✏️ Draw Character</span>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 10px", background:"#0d1117", borderBottom:"1px solid #21262d", flexShrink:0 }}>
+                  <span style={{ fontSize:11, color:"#00ffc8", fontWeight:600 }}>Draw Character</span>
                   <button onClick={() => setActivePanel("characters")}
-                    style={{ padding:"2px 10px", border:"1px solid #21262d", borderRadius:4, background:"transparent", color:"#6b7280", cursor:"pointer", fontSize:11 }}>
-                    ✕ Close
+                    style={{ padding:"2px 8px", border:"1px solid #21262d", borderRadius:4, background:"transparent", color:"#6b7280", cursor:"pointer", fontSize:11 }}>
+                    Close
                   </button>
                 </div>
                 <div style={{ flex:1, overflow:"hidden" }}>
@@ -360,50 +382,56 @@ export default function App() {
               </div>
             )}
             <StatsOverlay fps={fps} show={showStats} />
-            <PuppetCanvas
-              ref={canvasCompRef}
-              characters={characters}
-              activeRig={rig}
-              mouthShape={mouthShape}
-              expression={expression}
-              showSkeleton={showSkeleton}
-              showGrid={showGrid}
-            />
+            <PuppetCanvas ref={canvasCompRef} characters={characters} activeRig={rig}
+              mouthShape={mouthShape} expression={expression}
+              showSkeleton={showSkeleton} showGrid={showGrid}
+              scene={currentScene} props={props}
+              onCharacterMove={(id, updates) => updateCharacter(id, updates)} />
           </div>
 
-          <div className="sp-timeline">
-            <PuppetTimeline
-              isRecording={isRecording} isPlaying={isPlaying}
-              frameCount={recordedFrames.length} currentFrame={playbackIdx}
-              duration={recordedFrames.length / 30} fps={30}
-              onRecord={startRecording} onStopRecord={stopRecording}
-              onPlay={startPlayback} onPause={pausePlayback} onStop={stopPlayback}
-              onScrub={(idx) => { setIsPlaying(false); setPlaybackIdx(idx); }}
-              onExportJSON={() => exportFramesAsJSON(recordedFrames)}
-              onExportVideo={() => {
-                if (downloadUrl) {
-                  const a = document.createElement("a");
-                  a.href = downloadUrl; a.download = "puppet.webm"; a.click();
-                }
-              }}
-              downloadUrl={downloadUrl}
-            />
+          <SceneSequencer scenes={scenes} activeScene={activeScene}
+            onSelectScene={setActiveScene} onAddScene={addScene}
+            onDeleteScene={deleteScene} onReorderScene={reorderScene} />
+
+          <div className="sp-timeline" style={{ height: useKeyframes ? 200 : 140 }}>
+            {useKeyframes ? (
+              <KeyframeTimeline totalFrames={recordedFrames.length || 300} currentFrame={playbackIdx}
+                fps={30} keyframes={keyframes} isPlaying={isPlaying} isRecording={isRecording}
+                onPlay={startPlayback} onPause={pausePlayback} onStop={stopPlayback}
+                onRecord={startRecording} onStopRecord={stopRecording}
+                onScrub={(idx) => { setIsPlaying(false); setPlaybackIdx(idx); }}
+                onAddKeyframe={(frame, track) => {
+                  setKeyframes((prev) => ({
+                    ...prev,
+                    [track]: [...(prev[track]||[]).filter((k) => k.frame!==frame), { frame }].sort((a,b) => a.frame-b.frame)
+                  }));
+                  setStatus("Keyframe: " + track + " @ " + frame);
+                }}
+                onDeleteKeyframe={(frame, track) => {
+                  setKeyframes((prev) => ({ ...prev, [track]: (prev[track]||[]).filter((k) => k.frame!==frame) }));
+                }} />
+            ) : (
+              <PuppetTimeline isRecording={isRecording} isPlaying={isPlaying}
+                frameCount={recordedFrames.length} currentFrame={playbackIdx}
+                duration={recordedFrames.length / 30} fps={30}
+                onRecord={startRecording} onStopRecord={stopRecording}
+                onPlay={startPlayback} onPause={pausePlayback} onStop={stopPlayback}
+                onScrub={(idx) => { setIsPlaying(false); setPlaybackIdx(idx); }}
+                onExportJSON={() => exportFramesAsJSON(recordedFrames)}
+                onExportVideo={() => { if (downloadUrl) { const a=document.createElement("a"); a.href=downloadUrl; a.download="puppet.webm"; a.click(); }}}
+                downloadUrl={downloadUrl} />
+            )}
           </div>
         </div>
 
-        {/* Layer panel */}
-        <LayerPanel
-          characters={characters} activeId={activeId}
-          onSelect={setActiveId}
-          onToggleVisible={(id) => updateCharacter(id, { visible: !characters.find((c) => c.id === id).visible })}
-          onToggleLock={() => {}}
-        />
+        <LayerPanel characters={characters} activeId={activeId} onSelect={setActiveId}
+          onToggleVisible={(id) => { const c = characters.find((ch) => ch.id===id); if(c) updateCharacter(id, { visible:!c.visible }); }}
+          onToggleLock={() => {}} />
       </div>
 
-      {/* Hidden webcam when mocap off */}
       {!mocapOn && (
         <video ref={videoRef} autoPlay muted playsInline
-          style={{ position: "absolute", opacity: 0, width: 1, height: 1, pointerEvents: "none" }} />
+          style={{ position:"absolute", opacity:0, width:1, height:1, pointerEvents:"none" }} />
       )}
     </div>
   );
