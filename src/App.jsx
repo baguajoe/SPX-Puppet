@@ -210,7 +210,7 @@ export default function App() {
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Sidebar */}
-        <div className="sp-sidebar">
+        <div className="sp-sidebar" style={{ width: 220 }}>
           <div className="sp-sidebar-header">
             <span className="sp-logo">SPX</span>
             <span style={{ fontWeight: 700, fontSize: 14 }}>Puppet</span>
