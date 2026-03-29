@@ -21,11 +21,14 @@ import DialogueSystem from "./components/film/DialogueSystem.jsx";
 import SoundtrackPanel from "./components/film/SoundtrackPanel.jsx";
 import usePuppetMocap from "./hooks/usePuppetMocap.js";
 import { createRig } from "./utils/PuppetRig.js";
+import { solveFABRIK, createArmIK, createLegIK, drawIKChain } from "./utils/PuppetIK.js";
+import { createPhysicsLayer, stepPhysicsLayer, applyWindToLayer } from "./utils/PuppetPhysics.js";
 import { createLipSyncEngine } from "./utils/PuppetLipSync.js";
 import { createRecorder, exportFramesAsJSON } from "./utils/PuppetRecorder.js";
 import { createFaceExpressionEngine, EXPRESSIONS } from "./utils/PuppetFaceExpressions.js";
 import { exportMP4, downloadFile } from "./utils/PuppetExporter.js";
 import { exportFullFilm, downloadBlob } from "./utils/FilmExporter.js";
+import { uploadPuppetRecording, savePuppetProject, listPuppetProjects, notifyStreamPireX } from "./utils/PuppetStreamPireXBridge.js";
 import "./styles/puppet.css";
 
 const PANELS = [
@@ -74,6 +77,10 @@ export default function App() {
   const [cameraMove,     setCameraMove]     = useState("static");
   const [exportProgress, setExportProgress] = useState(null);
   const [useKeyframes,   setUseKeyframes]   = useState(false);
+  const [history,        setHistory]        = useState([]);
+  const [future,         setFuture]         = useState([]);
+  const [physicsOn,      setPhysicsOn]      = useState(false);
+  const [ikOn,           setIkOn]           = useState(false);
 
   const rigRef          = useRef(createRig(640, 480));
   const videoRef        = useRef(null);
@@ -173,7 +180,13 @@ export default function App() {
   const pausePlayback = () => { clearInterval(playIntervalRef.current); setIsPlaying(false); };
   const stopPlayback  = () => { clearInterval(playIntervalRef.current); setIsPlaying(false); setPlaybackIdx(0); };
 
-  const addCharacter = (char) => { setCharacters((p) => [...p, char]); setActiveId(char.id); setStatus("Added: " + char.name); };
+  const addCharacter = (char) => {
+    setHistory(h => [...h.slice(-20), characters]);
+    setFuture([]);
+    setCharacters((p) => [...p, char]);
+    setActiveId(char.id);
+    setStatus("Added: " + char.name);
+  };
   const removeCharacter = (id) => { setCharacters((p) => p.filter((c) => c.id !== id)); setActiveId((p) => p === id ? null : p); };
   const updateCharacter = (id, updates) => { setCharacters((p) => p.map((c) => c.id === id ? { ...c, ...updates } : c)); };
 
@@ -196,6 +209,43 @@ export default function App() {
     else if (action === "toggle_grid") { setShowGrid((v) => !v); }
     else if (action === "toggle_fps") { setShowStats((v) => !v); }
     else if (action === "new") { setCharacters([]); setRecordedFrames([]); setDialogues([]); setStatus("New project"); }
+    else if (action === "load") {
+      const inp = document.createElement("input");
+      inp.type = "file"; inp.accept = ".json";
+      inp.onchange = (e) => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (data.characters) setCharacters(data.characters);
+            if (data.scenes) setScenes(data.scenes);
+            if (data.dialogues) setDialogues(data.dialogues);
+            setStatus("Project loaded: " + file.name);
+          } catch(err) { setStatus("Load failed: " + err.message); }
+        };
+        reader.readAsText(file);
+      };
+      inp.click();
+    }
+    else if (action === "toggle_physics") { setPhysicsOn(v => !v); setStatus("Physics: " + (!physicsOn ? "on" : "off")); }
+    else if (action === "toggle_ik") { setIkOn(v => !v); setStatus("IK: " + (!ikOn ? "on" : "off")); }
+    else if (action === "cloud_save") {
+      const token = localStorage.getItem('jwt-token') || localStorage.getItem('token');
+      if (!token) { setStatus("Sign in to StreamPireX to save to cloud"); return; }
+      savePuppetProject({ characters, scenes, dialogues, keyframes, version: "1.0" }, "puppet_project")
+        .then(r => { notifyStreamPireX(r.url, "puppet_project"); setStatus("✅ Saved to StreamPireX cloud"); })
+        .catch(e => setStatus("Cloud save failed: " + e.message));
+    }
+    else if (action === "cloud_load") {
+      listPuppetProjects()
+        .then(projects => {
+          if (!projects.length) { setStatus("No cloud projects found"); return; }
+          // Use first project for now — UI picker can be added later
+          setStatus("Found " + projects.length + " cloud project(s) — load from menu");
+        })
+        .catch(e => setStatus("Cloud load failed: " + e.message));
+    }
     else if (action === "play") { isPlaying ? pausePlayback() : startPlayback(); }
   };
 
@@ -219,7 +269,22 @@ export default function App() {
       <MenuBar onAction={handleMenuAction} />
       <GeneralToolbar activeTool={activeTool} setActiveTool={setActiveTool}
         transform={transform} onTransformChange={setTransform}
-        onUndo={() => setStatus("Undo")} onRedo={() => setStatus("Redo")} />
+        onUndo={() => {
+          if (history.length === 0) return;
+          const prev = history[history.length - 1];
+          setFuture(f => [characters, ...f]);
+          setCharacters(prev);
+          setHistory(h => h.slice(0, -1));
+          setStatus('Undo');
+        }}
+        onRedo={() => {
+          if (future.length === 0) return;
+          const next = future[0];
+          setHistory(h => [...h, characters]);
+          setCharacters(next);
+          setFuture(f => f.slice(1));
+          setStatus('Redo');
+        }} />
       <BoneToolbar onAction={(a) => setStatus("Bone: " + a)} />
 
       <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
@@ -426,7 +491,10 @@ export default function App() {
 
         <LayerPanel characters={characters} activeId={activeId} onSelect={setActiveId}
           onToggleVisible={(id) => { const c = characters.find((ch) => ch.id===id); if(c) updateCharacter(id, { visible:!c.visible }); }}
-          onToggleLock={() => {}} />
+          onToggleLock={(id) => {
+            const c = characters.find((ch) => ch.id === id);
+            if (c) updateCharacter(id, { locked: !c.locked });
+          }} />
       </div>
 
       {!mocapOn && (
