@@ -257,7 +257,7 @@ export function CharacterLibraryPanel({ onAddCharacter, setStatus }) {
 }
 import { autoRigImage } from '../../utils/PuppetAutoRig.js';
 
-const S = {
+const SA = {
   root:   { padding:16, color:'#e0e0e0', fontFamily:'JetBrains Mono,monospace', fontSize:12 },
   title:  { color:'#00ffc8', fontSize:13, fontWeight:700, marginBottom:12 },
   drop:   { border:'2px dashed #333', borderRadius:8, padding:32, textAlign:'center', cursor:'pointer', color:'#555', fontSize:11, marginBottom:12 },
@@ -306,11 +306,11 @@ export function AutoRigPanel({ onRigComplete, setStatus: setParentStatus }) {
   };
 
   return (
-    <div style={S.root}>
-      <div style={S.title}>🦾 Auto-Rig from Image</div>
+    <div style={SA.root}>
+      <div style={SA.title}>🦾 Auto-Rig from Image</div>
 
       <div
-        style={S.drop}
+        style={SA.drop}
         onDrop={handleDrop}
         onDragOver={e => e.preventDefault()}
         onClick={() => inputRef.current?.click()}
@@ -326,17 +326,17 @@ export function AutoRigPanel({ onRigComplete, setStatus: setParentStatus }) {
       </div>
 
       {preview && (
-        <img src={preview} alt="character preview" style={S.preview} />
+        <img src={preview} alt="character preview" style={SA.preview} />
       )}
 
       {rig && (
         <>
           <div style={{ marginTop:8, display:'flex', gap:4, flexWrap:'wrap' }}>
-            <button style={S.btn()} onClick={handleApply}>✅ Apply Rig</button>
-            <button style={S.btn('#888')} onClick={() => setShowJoints(v => !v)}>
+            <button style={SA.btn()} onClick={handleApply}>✅ Apply Rig</button>
+            <button style={SA.btn('#888')} onClick={() => setShowJoints(v => !v)}>
               {showJoints ? '▲ Hide' : '▼ Show'} Joints ({Object.keys(rig.joints).length})
             </button>
-            <button style={S.btn('#555')} onClick={() => { setRig(null); setPreview(null); setStatus('Ready'); }}>
+            <button style={SA.btn('#555')} onClick={() => { setRig(null); setPreview(null); setStatus('Ready'); }}>
               ✕ Clear
             </button>
           </div>
@@ -344,7 +344,7 @@ export function AutoRigPanel({ onRigComplete, setStatus: setParentStatus }) {
           {showJoints && (
             <div style={{ marginTop:8, maxHeight:200, overflowY:'auto', border:'1px solid #1a1a2e', borderRadius:4 }}>
               {Object.entries(rig.joints).map(([name, j]) => (
-                <div key={name} style={S.joint}>
+                <div key={name} style={SA.joint}>
                   <span style={{ color:'#00ffc8' }}>{name}</span>
                   <span style={{ color:'#888' }}>x:{Math.round(j.x)} y:{Math.round(j.y)}</span>
                   <span style={{ color:'#FF6600' }}>{rig.tags[name] || ''}</span>
@@ -355,7 +355,7 @@ export function AutoRigPanel({ onRigComplete, setStatus: setParentStatus }) {
         </>
       )}
 
-      <div style={S.status}>{status}</div>
+      <div style={SA.status}>{status}</div>
     </div>
   );
 }
