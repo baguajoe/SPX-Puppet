@@ -162,7 +162,7 @@ export function FacialSlidersPanel({ onFacialUpdate, mediaPipeState, blendWeight
       {/* MediaPipe blend */}
       {mediaPipeState && (
         <div style={{ marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
-          <span style={{ color:'#888', fontSize:10' }}>MediaPipe blend</span>
+          <span style={{ color:'#888', fontSize:10 }}>MediaPipe blend</span>
           <input type="range" min={0} max={1} step={0.05} value={blend}
             onChange={e => setBlend(Number(e.target.value))} style={{ flex:1 }}/>
           <span style={{ color:'#FF6600', fontSize:10 }}>{Math.round(blend*100)}%</span>
