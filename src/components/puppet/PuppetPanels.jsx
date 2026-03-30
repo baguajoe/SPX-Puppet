@@ -255,3 +255,107 @@ export function CharacterLibraryPanel({ onAddCharacter, setStatus }) {
     </div>
   );
 }
+import { autoRigImage } from '../../utils/PuppetAutoRig.js';
+
+const S = {
+  root:   { padding:16, color:'#e0e0e0', fontFamily:'JetBrains Mono,monospace', fontSize:12 },
+  title:  { color:'#00ffc8', fontSize:13, fontWeight:700, marginBottom:12 },
+  drop:   { border:'2px dashed #333', borderRadius:8, padding:32, textAlign:'center', cursor:'pointer', color:'#555', fontSize:11, marginBottom:12 },
+  btn:    (c='#00ffc8') => ({ padding:'6px 16px', border:`1px solid ${c}`, borderRadius:4, background:'transparent', color:c, cursor:'pointer', fontSize:11, margin:'4px 2px' }),
+  status: { color:'#FF6600', fontSize:10, marginTop:8, minHeight:16 },
+  preview:{ width:'100%', borderRadius:6, marginTop:8, border:'1px solid #222' },
+  joint:  { display:'flex', justifyContent:'space-between', padding:'3px 6px', borderBottom:'1px solid #111', fontSize:10 },
+};
+
+export function AutoRigPanel({ onRigComplete, setStatus: setParentStatus }) {
+  const [status,    setStatus]    = useState('Drop a character image to auto-rig');
+  const [preview,   setPreview]   = useState(null);
+  const [rig,       setRig]       = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [showJoints,setShowJoints]= useState(false);
+  const inputRef = useRef();
+
+  const processFile = async (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      setStatus('Please drop an image file (PNG, JPG, etc.)');
+      return;
+    }
+    setLoading(true);
+    setStatus('Analyzing character…');
+    try {
+      const result = await autoRigImage(file);
+      setRig(result.rig);
+      setPreview(result.imageUrl);
+      setStatus(`✅ Auto-rig complete — ${Object.keys(result.rig.joints).length} joints detected`);
+    } catch (e) {
+      setStatus('Auto-rig failed: ' + e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    processFile(e.dataTransfer.files[0]);
+  };
+
+  const handleApply = () => {
+    if (!rig) return;
+    onRigComplete?.(rig);
+    setParentStatus?.('✅ Rig applied to character');
+    setStatus('Rig applied ✓');
+  };
+
+  return (
+    <div style={S.root}>
+      <div style={S.title}>🦾 Auto-Rig from Image</div>
+
+      <div
+        style={S.drop}
+        onDrop={handleDrop}
+        onDragOver={e => e.preventDefault()}
+        onClick={() => inputRef.current?.click()}
+      >
+        {loading ? '⏳ Analyzing…' : '📁 Drop character image here or click to browse'}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          style={{ display:'none' }}
+          onChange={e => processFile(e.target.files[0])}
+        />
+      </div>
+
+      {preview && (
+        <img src={preview} alt="character preview" style={S.preview} />
+      )}
+
+      {rig && (
+        <>
+          <div style={{ marginTop:8, display:'flex', gap:4, flexWrap:'wrap' }}>
+            <button style={S.btn()} onClick={handleApply}>✅ Apply Rig</button>
+            <button style={S.btn('#888')} onClick={() => setShowJoints(v => !v)}>
+              {showJoints ? '▲ Hide' : '▼ Show'} Joints ({Object.keys(rig.joints).length})
+            </button>
+            <button style={S.btn('#555')} onClick={() => { setRig(null); setPreview(null); setStatus('Ready'); }}>
+              ✕ Clear
+            </button>
+          </div>
+
+          {showJoints && (
+            <div style={{ marginTop:8, maxHeight:200, overflowY:'auto', border:'1px solid #1a1a2e', borderRadius:4 }}>
+              {Object.entries(rig.joints).map(([name, j]) => (
+                <div key={name} style={S.joint}>
+                  <span style={{ color:'#00ffc8' }}>{name}</span>
+                  <span style={{ color:'#888' }}>x:{Math.round(j.x)} y:{Math.round(j.y)}</span>
+                  <span style={{ color:'#FF6600' }}>{rig.tags[name] || ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <div style={S.status}>{status}</div>
+    </div>
+  );
+}
