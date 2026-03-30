@@ -47,6 +47,11 @@ const PANELS = [
   ["dialogue",  "💬","Dialog"],
   ["soundtrack","🎵","Sound"],
   ["film",      "🎬","Film"],
+  ["autorig",   "🦾","AutoRig"],
+  ["triggers",  "⌨️","Triggers"],
+  ["motions",   "🎬","Motions"],
+  ["facesliders","😊","Face"],
+  ["charlibrary","🎭","Library"],
 ];
 
 export default function App() {
