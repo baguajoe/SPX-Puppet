@@ -10,6 +10,10 @@ import CollabPanel from "./components/collab/CollabPanel.jsx";
 import StreamPanel from "./components/streaming/StreamPanel.jsx";
 import AIVoicePanel from "./components/puppet/AIVoicePanel.jsx";
 import DrawPanel from "./components/puppet/DrawPanel.jsx";
+import AutoRigPanel from "./components/puppet/PuppetPanels.jsx";
+import { TriggersPanel, MotionLibraryPanel, FacialSlidersPanel, CharacterLibraryPanel } from "./components/puppet/PuppetPanels.jsx";
+import { CyclePlayer, startAutoBlink } from "./utils/PuppetCycleLayers.js";
+import { MagnetSystem } from "./utils/PuppetMagnets.js";
 import MenuBar from "./components/puppet/MenuBar.jsx";
 import GeneralToolbar from "./components/puppet/GeneralToolbar.jsx";
 import BoneToolbar from "./components/puppet/BoneToolbar.jsx";
@@ -432,6 +436,68 @@ export default function App() {
           </div>
 
           <div className="sp-canvas-area">
+            {activePanel === "autorig" && (
+              <AutoRigPanel
+                onRigComplete={(rig) => {
+                  const active = characters.find(c => c.id === activeId);
+                  if (active) setCharacters(cs => cs.map(c => c.id === activeId ? { ...c, rig } : c));
+                }}
+                setStatus={setStatus}
+              />
+            )}
+            {activePanel === "triggers" && (
+              <TriggersPanel
+                onCycle={(name) => {
+                  if (!window._cyclePlayer) {
+                    window._cyclePlayer = new CyclePlayer();
+                    window._cyclePlayer.on((n, frame) => {
+                      Object.entries(frame).forEach(([joint, delta]) => {
+                        setCharacters(cs => cs.map(c => c.id === activeId ? {
+                          ...c,
+                          joints: { ...c.joints, [joint]: { ...(c.joints?.[joint]||{}), rot: (c.joints?.[joint]?.rot||0) + (delta.rot||0), dy: (c.joints?.[joint]?.dy||0) + (delta.dy||0) } }
+                        } : c));
+                      });
+                    });
+                  }
+                  window._cyclePlayer.toggle(name);
+                }}
+                onExpression={(expr) => setExpression?.(expr)}
+                setStatus={setStatus}
+              />
+            )}
+            {activePanel === "motions" && (
+              <MotionLibraryPanel
+                onMotionFrame={(frame) => {
+                  Object.entries(frame).forEach(([joint, delta]) => {
+                    setCharacters(cs => cs.map(c => c.id === activeId ? {
+                      ...c,
+                      joints: { ...c.joints, [joint]: { ...(c.joints?.[joint]||{}),
+                        rot: (delta.rot !== undefined ? delta.rot : (c.joints?.[joint]?.rot||0)),
+                        dy:  (delta.dy  !== undefined ? delta.dy  : (c.joints?.[joint]?.dy ||0)),
+                      }}
+                    } : c));
+                  });
+                }}
+                setStatus={setStatus}
+              />
+            )}
+            {activePanel === "facesliders" && (
+              <FacialSlidersPanel
+                onFacialUpdate={(state) => setMouthShape?.(state.mouthOpen)}
+                setStatus={setStatus}
+              />
+            )}
+            {activePanel === "charlibrary" && (
+              <CharacterLibraryPanel
+                onAddCharacter={(char) => {
+                  const newChar = { ...char, id: `char_${Date.now()}` };
+                  setCharacters(cs => [...cs, newChar]);
+                  setActiveId(newChar.id);
+                  setStatus(`Added ${char.name}`);
+                }}
+                setStatus={setStatus}
+              />
+            )}
             {activePanel === "draw" && (
               <div style={{ position:"absolute", inset:0, zIndex:10, display:"flex", flexDirection:"column" }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 10px", background:"#0d1117", borderBottom:"1px solid #21262d", flexShrink:0 }}>
