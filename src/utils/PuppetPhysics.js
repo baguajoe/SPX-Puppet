@@ -173,6 +173,3 @@ export function applyWindToLayer(layer, windX, windY) {
   return { ...layer, windX, windY };
 }
 
-export function applyWindToLayer(layer, windX, windY) {
-  return { ...layer, windX, windY };
-}
