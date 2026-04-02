@@ -1,4 +1,13 @@
-// =============================================================================
+#!/usr/bin/env python3
+"""
+Upgrade PuppetCharacterLibrary.js — large library with SVG-drawn characters
+Run: python3 install_puppet_library.py
+"""
+import os
+
+TARGET = "/workspaces/SPX-Puppet/src/utils/PuppetCharacterLibrary.js"
+
+CODE = r'''// =============================================================================
 // PuppetCharacterLibrary.js — Large Character Library UPGRADE
 // SPX Puppet | StreamPireX
 // 20 built-in characters across 8 categories, all SVG-drawn and fully rigged
@@ -576,3 +585,34 @@ export default {
   drawCharacterSVG, renderCharacterToSVGString, renderCharacterToDataURL,
   getCharacterThumbnailDataURL, exportSpriteSheet, importSpriteSheet,
 };
+'''
+
+with open(TARGET, 'w') as f:
+    f.write(CODE)
+
+print(f"✅ {TARGET}")
+print(f"   {len(CODE.splitlines())} lines")
+print(f"""
+🎉 Character Library upgraded:
+
+  20 built-in characters across 8 categories:
+    Professional: News Reporter, Teacher, Doctor, Musician
+    Cartoon:      Hero, Villain, Sidekick
+    Anime:        Anime Hero, Anime Girl, Ninja
+    Chibi:        Chibi Girl, Chibi Boy
+    Sci-Fi:       Robot, Cyborg, Alien
+    Fantasy:      Elf Mage, Warrior
+    Animal:       Fox, Cat
+    Minimal:      Stick Figure
+
+  SVG renderers for all 8 styles:
+    cartoon, anime, realistic, chibi, mechanical, stick, fantasy, animal
+
+  New functions:
+    getById(id), searchCharacters(query)
+    renderCharacterToSVGString(), renderCharacterToDataURL()
+    getCharacterThumbnailDataURL() — instant preview thumbnails
+
+Run: npm run build 2>&1 | grep "error" | head -10
+Then: git add -A && git commit -m "feat: character library — 20 characters, 8 styles, SVG renderers" && git push
+""")
