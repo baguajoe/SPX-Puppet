@@ -3,8 +3,16 @@
 import React, { useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { MOUTH_SHAPES } from '../../utils/PuppetLipSync.js';
 
-function drawStickFigure(ctx, rig, w, h, mouthShape) {
+function drawStickFigure(ctx, char, rig, w, h, mouthShape) {
   if (!rig) return;
+  const scale = char?.scale || 1;
+  const opacity = char?.opacity ?? 1;
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  // scale around canvas center
+  ctx.translate(w / 2, h / 2);
+  ctx.scale(char?.flipped ? -scale : scale, scale);
+  ctx.translate(-w / 2, -h / 2);
   const j = rig.joints;
   const px = (name) => j[name] ? j[name].x * w : null;
   const py = (name) => j[name] ? j[name].y * h : null;
@@ -54,6 +62,8 @@ function drawStickFigure(ctx, rig, w, h, mouthShape) {
     }
     ctx.stroke();
   }
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function drawImageCharacter(ctx, character, rig, w, h, mouthShape) {
@@ -93,7 +103,7 @@ function drawSkeletonOverlay(ctx, rig, w, h, showSkeleton) {
 }
 
 const PuppetCanvas = forwardRef(function PuppetCanvas(
-  { characters = [], activeRig, mouthShape, expression, showSkeleton = true, showGrid = true, scene, onCanvasReady },
+  { characters = [], activeRig, mouthShape, expression, showSkeleton = true, showGrid = true, scene, onCanvasReady, onCharacterMove },
   ref
 ) {
   const canvasRef = useRef(null);
@@ -147,7 +157,7 @@ const PuppetCanvas = forwardRef(function PuppetCanvas(
     characters.forEach(char => {
       if (!char.visible) return;
       if (char.builtin === 'stick') {
-        drawStickFigure(ctx, activeRig, W, H, mouthShape);
+        drawStickFigure(ctx, char, activeRig, W, H, mouthShape);
       } else {
         drawImageCharacter(ctx, char, activeRig, W, H, mouthShape);
         if (showSkeleton && activeRig) drawSkeletonOverlay(ctx, activeRig, W, H, true);
@@ -184,10 +194,49 @@ const PuppetCanvas = forwardRef(function PuppetCanvas(
     return () => ro.disconnect();
   }, []);
 
+  const dragRef = useRef(null);
+
+  const getCanvasPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    return { x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height };
+  };
+
+  const handleMouseDown = (e) => {
+    if (!activeRig) return;
+    const { x, y } = getCanvasPos(e);
+    const scale = characters.find(c => c.builtin === 'stick')?.scale || 1;
+    let best = null, bestDist = 0.06;
+    Object.entries(activeRig.joints).forEach(([name, joint]) => {
+      const jx = 0.5 + (joint.x - 0.5) * scale;
+      const jy = 0.5 + (joint.y - 0.5) * scale;
+      const dist = Math.hypot(jx - x, jy - y);
+      if (dist < bestDist) { bestDist = dist; best = name; }
+    });
+    console.log('mousedown hit:', best, 'at', x.toFixed(3), y.toFixed(3));
+    if (best) dragRef.current = best;
+  };
+
+  const handleMouseMove = (e) => {
+    if (!dragRef.current || !activeRig) return;
+    const { x, y } = getCanvasPos(e);
+    const scale = characters.find(c => c.builtin === 'stick')?.scale || 1;
+    const jx = 0.5 + (x - 0.5) / scale;
+    const jy = 0.5 + (y - 0.5) / scale;
+    const updatedRig = { ...activeRig, joints: { ...activeRig.joints, [dragRef.current]: { ...activeRig.joints[dragRef.current], x: jx, y: jy } } };
+    if (onCharacterMove) onCharacterMove('__rig__', updatedRig);
+  };
+
+  const handleMouseUp = () => { dragRef.current = null; };
+
   return (
     <canvas
       ref={canvasRef}
       style={{ width:'100%', height:'100%', display:'block' }}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
     />
   );
 });

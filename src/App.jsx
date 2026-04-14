@@ -431,7 +431,7 @@ export default function App() {
             <span style={{ fontSize:10, color:"var(--muted)", marginRight:6 }}>{characters.length} chars</span>
             {mocapOn && <span style={{ fontSize:10, color:"var(--danger)", marginRight:6 }}>LIVE {fps}fps</span>}
             <button className="sp-btn" style={{ width:"auto", padding:"2px 8px", fontSize:10 }}
-              onClick={() => { const c = characters.find((ch) => ch.id === activeId); if(c) updateCharacter(activeId, { scale:-(c.scale||1) }); }}>
+              onClick={() => { const c = characters.find((ch) => ch.id === activeId); if(c) updateCharacter(activeId, { flipped:!(c.flipped||false) }); }}>
               Flip
             </button>
             <button className="sp-btn sp-btn--teal" style={{ width:"auto", padding:"2px 8px", fontSize:10 }} onClick={handleExportMP4}>
@@ -521,7 +521,10 @@ export default function App() {
               mouthShape={mouthShape} expression={expression}
               showSkeleton={showSkeleton} showGrid={showGrid}
               scene={currentScene} props={props}
-              onCharacterMove={(id, updates) => updateCharacter(id, updates)} />
+              onCharacterMove={(id, updates) => {
+                if (id === '__rig__') { onRigUpdate(updates); }
+                else updateCharacter(id, updates);
+              }} />
           </div>
 
           <SceneSequencer scenes={scenes} activeScene={activeScene}
