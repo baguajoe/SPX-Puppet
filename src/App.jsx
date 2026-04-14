@@ -127,6 +127,26 @@ export default function App() {
     return () => clearInterval(id);
   }, [lipSyncOn]);
 
+  // Capture rig frames while recording
+  useEffect(() => {
+    if (!isRecording) return;
+    const id = setInterval(() => {
+      if (recorderRef.current && rigRef.current) {
+        recorderRef.current.recordFrame({ joints: JSON.parse(JSON.stringify(rigRef.current.joints)) });
+      }
+    }, 1000 / 30);
+    return () => clearInterval(id);
+  }, [isRecording]);
+
+  // Apply recorded frame during playback
+  useEffect(() => {
+    if (!isPlaying || !recordedFrames.length) return;
+    const frame = recordedFrames[playbackIdx];
+    if (frame?.joints) {
+      onRigUpdate({ ...rigRef.current, joints: frame.joints });
+    }
+  }, [playbackIdx, isPlaying]);
+
   const toggleMocap = async () => {
     if (mocapOn) { stopMocap(); setMocapOn(false); setStatus("MoCap stopped"); }
     else { setMocapOn(true); await startMocap(); setStatus("MoCap running"); }
