@@ -221,10 +221,34 @@ export default function App() {
   const handleExportMP4 = async () => {
     const canvas = canvasCompRef.current && canvasCompRef.current.getCanvas();
     if (!canvas) return;
+    if (!recordedFrames.length) { setStatus("Nothing recorded yet — record first then export"); return; }
     setStatus("Exporting...");
-    const result = await exportMP4(canvas, 10, 30);
-    downloadFile(result.blob, result.filename);
-    setStatus("MP4 exported!");
+    const duration = recordedFrames.length / 30;
+    // Start canvas recorder
+    const { default: noop, ..._ } = {};
+    const stream = canvas.captureStream(30);
+    const rec = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    rec.start(100);
+    // Replay frames
+    let i = 0;
+    const interval = setInterval(() => {
+      const frame = recordedFrames[i];
+      if (frame?.joints) onRigUpdate({ ...rigRef.current, joints: frame.joints });
+      i++;
+      if (i >= recordedFrames.length) {
+        clearInterval(interval);
+        setTimeout(() => {
+          rec.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            downloadFile(blob, "puppet_" + Date.now() + ".webm");
+            setStatus("MP4 exported!");
+          };
+          rec.stop();
+        }, 200);
+      }
+    }, 1000 / 30);
   };
 
   const handleMenuAction = (action) => {
