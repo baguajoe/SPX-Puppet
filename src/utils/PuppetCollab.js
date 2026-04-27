@@ -115,7 +115,8 @@ export function createCollabRoom(options = {}) {
   };
 
   const connect = (url) => {
-    const wsEndpoint = url || wsUrl || `wss://spx-puppet-collab.streampirex.com/room/${roomId}`;
+    const wsUrl = import.meta.env.VITE_COLLAB_WS ? `${import.meta.env.VITE_COLLAB_WS}/room/${roomId}` : null;
+    if (!wsUrl) { console.warn("[PuppetCollab] VITE_COLLAB_WS not set — collab disabled"); return; }
     try {
       ws = new WebSocket(wsEndpoint);
 

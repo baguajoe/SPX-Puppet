@@ -2,7 +2,7 @@
 // SPX Puppet | StreamPireX
 // Features: TTS, voice clone, streaming, emotion-aware, auto lip sync, voice library
 
-const ELEVENLABS_API = 'https://api.elevenlabs.io/v1';
+const ELEVENLABS_API = (import.meta.env.VITE_ELEVENLABS_URL || 'https://api.elevenlabs.io/v1');
 
 export const FREE_VOICES = [
   { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella',   gender: 'female', accent: 'american' },

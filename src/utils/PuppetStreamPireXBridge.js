@@ -1,6 +1,6 @@
 // PuppetStreamPireXBridge.js — Send puppet animations/recordings to StreamPireX
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || 'https://streampirex-production.up.railway.app';
+const BACKEND = import.meta.env.VITE_BACKEND_URL || '';
 
 function getAuth() {
   const t = localStorage.getItem('jwt-token') || localStorage.getItem('token') || '';

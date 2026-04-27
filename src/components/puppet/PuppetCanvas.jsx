@@ -213,7 +213,6 @@ const PuppetCanvas = forwardRef(function PuppetCanvas(
       const dist = Math.hypot(jx - x, jy - y);
       if (dist < bestDist) { bestDist = dist; best = name; }
     });
-    console.log('mousedown hit:', best, 'at', x.toFixed(3), y.toFixed(3));
     if (best) dragRef.current = best;
   };
 

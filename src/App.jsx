@@ -11,8 +11,8 @@ import StreamPanel from "./components/streaming/StreamPanel.jsx";
 import AIVoicePanel from "./components/puppet/AIVoicePanel.jsx";
 import DrawPanel from "./components/puppet/DrawPanel.jsx";
 import { AutoRigPanel, TriggersPanel, MotionLibraryPanel, FacialSlidersPanel, CharacterLibraryPanel } from "./components/puppet/PuppetPanels.jsx";
-import { CyclePlayer, startAutoBlink } from "./utils/PuppetCycleLayers.js";
-import { MagnetSystem } from "./utils/PuppetMagnets.js";
+import { CyclePlayer } from "./utils/PuppetCycleLayers.js";
+import { } from "./utils/PuppetMagnets.js";
 import MenuBar from "./components/puppet/MenuBar.jsx";
 import GeneralToolbar from "./components/puppet/GeneralToolbar.jsx";
 import BoneToolbar from "./components/puppet/BoneToolbar.jsx";
@@ -24,8 +24,8 @@ import DialogueSystem from "./components/film/DialogueSystem.jsx";
 import SoundtrackPanel from "./components/film/SoundtrackPanel.jsx";
 import usePuppetMocap from "./hooks/usePuppetMocap.js";
 import { createRig } from "./utils/PuppetRig.js";
-import { solveFABRIK, createArmIK, createLegIK, drawIKChain } from "./utils/PuppetIK.js";
-import { createPhysicsLayer, stepPhysicsLayer, applyWindToLayer } from "./utils/PuppetPhysics.js";
+import { } from "./utils/PuppetIK.js";
+import { } from "./utils/PuppetPhysics.js";
 import { createLipSyncEngine } from "./utils/PuppetLipSync.js";
 import { createRecorder, exportFramesAsJSON } from "./utils/PuppetRecorder.js";
 import { createFaceExpressionEngine, EXPRESSIONS } from "./utils/PuppetFaceExpressions.js";
@@ -57,7 +57,7 @@ const PANELS = [
 export default function App() {
   const [characters,     setCharacters]     = useState([]);
   const [activeId,       setActiveId]       = useState(null);
-  const [rig,            setRig]            = useState(createRig(640, 480));
+  const [rig,            setRig]            = useState(() => createRig(640, 480));
   const [mocapOn,        setMocapOn]        = useState(false);
   const [lipSyncOn,      setLipSyncOn]      = useState(false);
   const [faceOn,         setFaceOn]         = useState(false);
@@ -225,7 +225,6 @@ export default function App() {
     setStatus("Exporting...");
     const duration = recordedFrames.length / 30;
     // Start canvas recorder
-    const { default: noop, ..._ } = {};
     const stream = canvas.captureStream(30);
     const rec = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
     const chunks = [];
