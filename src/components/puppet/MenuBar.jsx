@@ -4,20 +4,18 @@ import React, { useState } from "react";
 const MENUS = {
   File: [
     { label:"New Project", shortcut:"Ctrl+N", action:"new" },
-    { label:"Open Project", shortcut:"Ctrl+O", action:"open" },
-    { label:"Save Project", shortcut:"Ctrl+S", action:"save" },
+    { label:"Open", shortcut:"Ctrl+O", action:"load" },
+    { label:"Save", shortcut:"Ctrl+S", action:"save" },
     { label:"---" },
-    { label:"Import Character", shortcut:"Ctrl+I", action:"import_char" },
+    { label:"Save to Cloud", shortcut:"", action:"cloud_save" },
+    { label:"Load from Cloud", shortcut:"", action:"cloud_load" },
     { label:"---" },
-    { label:"Export WebM", shortcut:"Ctrl+E", action:"export_webm" },
-    { label:"Export MP4", shortcut:"Ctrl+Shift+E", action:"export_mp4" },
-    { label:"Export JSON", shortcut:"", action:"export_json" },
+    { label:"Export WebM", shortcut:"Ctrl+E", action:"export_mp4" },
   ],
   Edit: [
     { label:"Undo", shortcut:"Ctrl+Z", action:"undo" },
     { label:"Redo", shortcut:"Ctrl+Y", action:"redo" },
     { label:"---" },
-    { label:"Select All", shortcut:"Ctrl+A", action:"select_all" },
     { label:"Delete", shortcut:"Del", action:"delete" },
   ],
   View: [
@@ -28,26 +26,10 @@ const MENUS = {
     { label:"Fullscreen", shortcut:"F11", action:"fullscreen" },
   ],
   Puppet: [
-    { label:"Auto Rig", shortcut:"Ctrl+R", action:"auto_rig" },
     { label:"Reset Pose", shortcut:"", action:"reset_pose" },
-    { label:"Mirror Pose", shortcut:"", action:"mirror_pose" },
-    { label:"---" },
-    { label:"Bake Physics", shortcut:"", action:"bake_physics" },
   ],
   Animation: [
     { label:"Play/Pause", shortcut:"Space", action:"play" },
-    { label:"Stop", shortcut:"Escape", action:"stop" },
-    { label:"Rewind", shortcut:"Home", action:"rewind" },
-    { label:"---" },
-    { label:"Set Keyframe", shortcut:"K", action:"keyframe" },
-  ],
-  Window: [
-    { label:"Characters", shortcut:"", action:"panel_characters" },
-    { label:"Scene", shortcut:"", action:"panel_scene" },
-    { label:"Library", shortcut:"", action:"panel_library" },
-    { label:"AI Voice", shortcut:"", action:"panel_aivoice" },
-    { label:"Collaborate", shortcut:"", action:"panel_collab" },
-    { label:"Stream", shortcut:"", action:"panel_stream" },
   ],
   Help: [
     { label:"Documentation", shortcut:"F1", action:"docs" },

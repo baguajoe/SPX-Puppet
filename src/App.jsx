@@ -87,8 +87,6 @@ export default function App() {
   const [useKeyframes,   setUseKeyframes]   = useState(false);
   const [history,        setHistory]        = useState([]);
   const [future,         setFuture]         = useState([]);
-  const [physicsOn,      setPhysicsOn]      = useState(false);
-  const [ikOn,           setIkOn]           = useState(false);
 
   const rigRef          = useRef(createRig(640, 480));
   const videoRef        = useRef(null);
@@ -279,8 +277,6 @@ export default function App() {
       };
       inp.click();
     }
-    else if (action === "toggle_physics") { setPhysicsOn(v => !v); setStatus("Physics: " + (!physicsOn ? "on" : "off")); }
-    else if (action === "toggle_ik") { setIkOn(v => !v); setStatus("IK: " + (!ikOn ? "on" : "off")); }
     else if (action === "cloud_save") {
       const token = localStorage.getItem('jwt-token') || localStorage.getItem('token');
       if (!token) { setStatus("Sign in to StreamPireX to save to cloud"); return; }
@@ -296,6 +292,50 @@ export default function App() {
           setStatus("Found " + projects.length + " cloud project(s) — load from menu");
         })
         .catch(e => setStatus("Cloud load failed: " + e.message));
+    }
+    else if (action === "undo") {
+      if (history.length === 0) { setStatus("Nothing to undo"); return; }
+      const prev = history[history.length - 1];
+      setCharacters(prev);
+      setHistory(h => h.slice(0, -1));
+      setStatus("Undo");
+    }
+    else if (action === "redo") {
+      // Redo requires a forward stack — not implemented yet
+      setStatus("Redo not implemented");
+    }
+    else if (action === "delete") {
+      if (!activeId) { setStatus("Nothing selected"); return; }
+      setHistory(h => [...h.slice(-20), characters]);
+      setCharacters(cs => cs.filter(c => c.id !== activeId));
+      setActiveId(null);
+      setStatus("Deleted");
+    }
+    else if (action === "select_all") {
+      // Single-selection model — flag for future multi-select
+      setStatus("Multi-select not yet supported");
+    }
+    else if (action === "fullscreen") {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else document.documentElement.requestFullscreen?.();
+    }
+    else if (action === "reset_pose") {
+      const c = characters.find(ch => ch.id === activeId);
+      if (!c?.rig) { setStatus("No rig to reset"); return; }
+      setHistory(h => [...h.slice(-20), characters]);
+      // Reset joints to bind pose by re-running createRig
+      const fresh = createRig(c.rig.width || 640, c.rig.height || 480);
+      setCharacters(cs => cs.map(ch => ch.id === activeId ? { ...ch, rig: fresh } : ch));
+      setStatus("Pose reset");
+    }
+    else if (action === "about") {
+      alert("SPX Puppet — 2D Character Animator\nPart of the StreamPireX SPX Suite\nBuilt by Eye Forge Studios LLC");
+    }
+    else if (action === "docs") {
+      window.open("https://streampirex.com/docs/spx-puppet", "_blank");
+    }
+    else if (action === "streampirex") {
+      window.open(import.meta.env.VITE_STREAMPIREX_URL || "https://streampirex.com", "_blank");
     }
     else if (action === "play") { isPlaying ? pausePlayback() : startPlayback(); }
   };
