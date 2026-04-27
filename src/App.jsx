@@ -92,6 +92,7 @@ export default function App() {
   const lipSyncRef      = useRef(null);
   const faceEngineRef   = useRef(null);
   const playIntervalRef = useRef(null);
+  const cyclePlayerRef  = useRef(null);
 
   const onRigUpdate = useCallback((newRig) => {
     rigRef.current = newRig;
@@ -104,7 +105,7 @@ export default function App() {
   useEffect(() => {
     const handler = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-      if (e.code === "Space") { e.preventDefault(); isPlaying ? pausePlayback() : startPlayback(); }
+      if (e.code === "Space") { e.preventDefault(); isPlayingRef.current ? pausePlayback() : startPlayback(); }
       if (e.key === "f") setShowGrid((v) => !v);
       if (e.key === "b") setShowSkeleton((v) => !v);
       if (e.key === "Escape") setActivePanel("characters");
@@ -112,7 +113,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isPlaying]);
+  }, []);
 
   useEffect(() => {
     if (!lipSyncOn) return;
@@ -121,6 +122,14 @@ export default function App() {
     }, 33);
     return () => clearInterval(id);
   }, [lipSyncOn]);
+
+  // Stop cycle player on unmount (was a window global before — could leak across HMR)
+  useEffect(() => {
+    return () => {
+      try { if (cyclePlayerRef.current?.stop) cyclePlayerRef.current.stop(); } catch(_) {}
+      cyclePlayerRef.current = null;
+    };
+  }, []);
 
   // Capture rig frames while recording
   useEffect(() => {
@@ -140,7 +149,7 @@ export default function App() {
     if (frame?.joints) {
       onRigUpdate({ ...rigRef.current, joints: frame.joints });
     }
-  }, [playbackIdx, isPlaying]);
+  }, [playbackIdx, isPlaying, recordedFrames, onRigUpdate]);
 
   const toggleMocap = async () => {
     if (mocapOn) { stopMocap(); setMocapOn(false); setStatus("MoCap stopped"); }
@@ -190,11 +199,12 @@ export default function App() {
   };
 
   const startPlayback = () => {
-    if (!recordedFrames.length) return;
+    if (!recordedFramesRef.current.length) return;
     setPlaybackIdx(0); setIsPlaying(true);
     playIntervalRef.current = setInterval(() => {
       setPlaybackIdx((i) => {
-        if (i >= recordedFrames.length - 1) { clearInterval(playIntervalRef.current); setIsPlaying(false); return 0; }
+        const len = recordedFramesRef.current.length;
+        if (i >= len - 1) { clearInterval(playIntervalRef.current); setIsPlaying(false); return 0; }
         return i + 1;
       });
     }, 1000 / 30);
@@ -293,13 +303,18 @@ export default function App() {
     else if (action === "undo") {
       if (history.length === 0) { setStatus("Nothing to undo"); return; }
       const prev = history[history.length - 1];
+      setFuture(f => [characters, ...f]);
       setCharacters(prev);
       setHistory(h => h.slice(0, -1));
       setStatus("Undo");
     }
     else if (action === "redo") {
-      // Redo requires a forward stack — not implemented yet
-      setStatus("Redo not implemented");
+      if (future.length === 0) { setStatus("Nothing to redo"); return; }
+      const next = future[0];
+      setHistory(h => [...h, characters]);
+      setCharacters(next);
+      setFuture(f => f.slice(1));
+      setStatus("Redo");
     }
     else if (action === "delete") {
       if (!activeId) { setStatus("Nothing selected"); return; }
@@ -532,18 +547,27 @@ export default function App() {
             {activePanel === "triggers" && (
               <TriggersPanel
                 onCycle={(name) => {
-                  if (!window._cyclePlayer) {
-                    window._cyclePlayer = new CyclePlayer();
-                    window._cyclePlayer.on((n, frame) => {
-                      Object.entries(frame).forEach(([joint, delta]) => {
-                        setCharacters(cs => cs.map(c => c.id === activeId ? {
+                  if (!cyclePlayerRef.current) {
+                    cyclePlayerRef.current = new CyclePlayer();
+                    cyclePlayerRef.current.on((n, frame) => {
+                      // Read activeId fresh from a setState callback so we don't capture stale id
+                      setCharacters(cs => {
+                        const id = activeIdRef.current;
+                        return cs.map(c => c.id === id ? {
                           ...c,
-                          joints: { ...c.joints, [joint]: { ...(c.joints?.[joint]||{}), rot: (c.joints?.[joint]?.rot||0) + (delta.rot||0), dy: (c.joints?.[joint]?.dy||0) + (delta.dy||0) } }
-                        } : c));
+                          joints: Object.entries(frame).reduce((acc, [joint, delta]) => ({
+                            ...acc,
+                            [joint]: {
+                              ...(acc[joint]||{}),
+                              rot: (acc[joint]?.rot||0) + (delta.rot||0),
+                              dy:  (acc[joint]?.dy||0)  + (delta.dy||0),
+                            }
+                          }), { ...(c.joints||{}) })
+                        } : c);
                       });
                     });
                   }
-                  window._cyclePlayer.toggle(name);
+                  cyclePlayerRef.current.toggle(name);
                 }}
                 onExpression={(expr) => setExpression?.(expr)}
                 setStatus={setStatus}
