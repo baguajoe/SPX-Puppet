@@ -6,11 +6,14 @@ export function createRecorder(canvas, fps = 30) {
   let chunks = [];
   let recording = false;
   let startTime = null;
+  let lastUrl = null;
   const frameData = []; // for JSON export
 
   const recorder = {
     start() {
       if (recording) return;
+      // Revoke any leftover URL from the previous recording to avoid blob leak
+      if (lastUrl) { try { URL.revokeObjectURL(lastUrl); } catch(_){} lastUrl = null; }
       chunks = []; frameData.length = 0;
       startTime = performance.now();
       try {
@@ -35,7 +38,8 @@ export function createRecorder(canvas, fps = 30) {
         mediaRecorder.onstop = () => {
           recording = false;
           const blob = new Blob(chunks, { type: 'video/webm' });
-          resolve({ blob, url: URL.createObjectURL(blob), frames: [...frameData] });
+          lastUrl = URL.createObjectURL(blob);
+          resolve({ blob, url: lastUrl, frames: [...frameData] });
         };
         mediaRecorder.stop();
       });
@@ -44,6 +48,9 @@ export function createRecorder(canvas, fps = 30) {
     isRecording() { return recording; },
     getFrameCount() { return frameData.length; },
     getDuration() { return recording ? (performance.now() - startTime) / 1000 : 0; },
+    revoke() {
+      if (lastUrl) { try { URL.revokeObjectURL(lastUrl); } catch(_){} lastUrl = null; }
+    },
   };
 
   return recorder;

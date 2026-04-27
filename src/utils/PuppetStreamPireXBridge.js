@@ -39,7 +39,8 @@ export function notifyStreamPireX(url, name, type = 'puppet') {
     lib.unshift({ url, name, type, addedAt: Date.now() });
     localStorage.setItem('spx_puppet_library', JSON.stringify(lib.slice(0, 50)));
     if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'SPX_PUPPET_READY', url, name }, '*');
+      const targetOrigin = import.meta.env.VITE_STREAMPIREX_URL || 'https://streampirex.com';
+      window.parent.postMessage({ type: 'SPX_PUPPET_READY', url, name }, targetOrigin);
     }
   } catch(e) { console.warn('SPX notify failed:', e); }
 }
