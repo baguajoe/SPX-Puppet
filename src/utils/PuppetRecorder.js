@@ -29,6 +29,8 @@ export function createRecorder(canvas, fps = 30) {
 
     recordFrame(frameObj) {
       if (!recording) return;
+      // Cap at 9000 frames (5 min @ 30fps) to prevent OOM in long sessions
+      if (frameData.length >= 9000) return;
       frameData.push({ time: (performance.now() - startTime) / 1000, ...frameObj });
     },
 
@@ -46,6 +48,7 @@ export function createRecorder(canvas, fps = 30) {
     },
 
     isRecording() { return recording; },
+    isAtCap() { return frameData.length >= 9000; },
     getFrameCount() { return frameData.length; },
     getDuration() { return recording ? (performance.now() - startTime) / 1000 : 0; },
     revoke() {
