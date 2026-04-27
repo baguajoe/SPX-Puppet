@@ -368,7 +368,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100vh", overflow:"hidden" }}>
+    <div className="sp-app-root">
       <MenuBar onAction={handleMenuAction} />
       <GeneralToolbar activeTool={activeTool} setActiveTool={setActiveTool}
         transform={transform} onTransformChange={setTransform}
@@ -390,19 +390,19 @@ export default function App() {
         }} />
       <BoneToolbar onAction={(a) => setStatus("Bone: " + a)} />
 
-      <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
+      <div className="sp-main-row">
         {/* Sidebar */}
-        <div className="sp-sidebar" style={{ width:220 }}>
+        <div className="sp-sidebar">
           <div className="sp-sidebar-header">
             <span className="sp-logo">SPX</span>
-            <span style={{ fontWeight:700, fontSize:14 }}>Puppet</span>
-            <span className={"sp-chip " + (mocapOn ? "sp-chip--on" : "sp-chip--off")} style={{ marginLeft:"auto", fontSize:9 }}>
+            <span className="sp-sidebar-title">Puppet</span>
+            <span className={"sp-chip sp-chip-mocap " + (mocapOn ? "sp-chip--on" : "sp-chip--off")}>
               {mocapOn ? ("LIVE " + fps + "fps") : "Off"}
             </span>
           </div>
 
           {/* Panel nav — 2 rows of 6 */}
-          <div style={{ display:"flex", gap:2, padding:"4px 5px", borderBottom:"1px solid var(--border)", flexWrap:"wrap" }}>
+          <div className="sp-panel-nav">
             {PANELS.map(([id, icon, label]) => (
               <button key={id} onClick={() => setActivePanel(id)}
                 style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:1,
@@ -411,28 +411,28 @@ export default function App() {
                   background:  activePanel===id ? "rgba(0,255,200,0.1)" : "transparent",
                   color:       activePanel===id ? "var(--teal)" : "var(--muted)",
                   cursor:"pointer" }}>
-                <span style={{ fontSize:11 }}>{icon}</span>
-                <span style={{ fontSize:7, lineHeight:1 }}>{label}</span>
+                <span className="sp-panel-nav-btn-icon">{icon}</span>
+                <span className="sp-panel-nav-btn-label">{label}</span>
               </button>
             ))}
           </div>
 
           {/* Live capture */}
-          <div style={{ padding:"6px 8px", borderBottom:"1px solid var(--border)", display:"flex", flexDirection:"column", gap:4 }}>
+          <div className="sp-capture-block">
             <button className={"sp-btn " + (mocapOn ? "sp-btn--danger" : "sp-btn--primary")} onClick={toggleMocap}>
               {mocapOn ? "■ Stop MoCap" : "▶ Start MoCap"}
             </button>
-            <div style={{ display:"flex", gap:4 }}>
-              <button className={"sp-btn " + (lipSyncOn ? "sp-btn--danger" : "sp-btn--teal")} style={{ flex:1 }} onClick={toggleLipSync}>
+            <div className="sp-capture-row">
+              <button className={"sp-btn sp-capture-flex1 " + (lipSyncOn ? "sp-btn--danger" : "sp-btn--teal")} onClick={toggleLipSync}>
                 {lipSyncOn ? "■ Lip" : "🎤 Lip"}
               </button>
-              <button className={"sp-btn " + (faceOn ? "sp-btn--danger" : "sp-btn--orange")} style={{ flex:1 }} onClick={toggleFace}>
+              <button className={"sp-btn sp-capture-flex1 " + (faceOn ? "sp-btn--danger" : "sp-btn--orange")} onClick={toggleFace}>
                 {faceOn ? "■ Face" : "😊 Face"}
               </button>
             </div>
             {mocapOn && (
               <video ref={videoRef} autoPlay muted playsInline
-                style={{ width:"100%", borderRadius:6, border:"1px solid var(--border)", transform:"scaleX(-1)", display:"block" }} />
+                className="sp-mocap-video" />
             )}
           </div>
 
@@ -471,13 +471,13 @@ export default function App() {
                 onPlaySFX={(sfx) => setStatus("SFX: " + sfx.label)} />
             )}
             {activePanel === "film" && (
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                <div style={{ fontSize:10, color:"#6b7280", letterSpacing:1, textTransform:"uppercase" }}>Film Export</div>
-                <div style={{ fontSize:11, color:"#e0e0e0" }}>
+              <div className="sp-film-panel">
+                <div className="sp-film-label">Film Export</div>
+                <div className="sp-film-count">
                   {scenes.length} scene{scenes.length!==1?"s":""} total
                 </div>
                 {exportProgress && (
-                  <div style={{ padding:8, background:"rgba(0,255,200,0.05)", border:"1px solid #00ffc8", borderRadius:6, fontSize:11, color:"#00ffc8" }}>
+                  <div className="sp-film-progress">
                     Exporting scene {exportProgress.scene+1}/{exportProgress.total}...
                   </div>
                 )}
@@ -494,7 +494,7 @@ export default function App() {
                   setScenes((prev) => prev.map((s) => s.id===activeScene ? { ...s, thumbnail:snap } : s));
                   setStatus("Thumbnail captured");
                 }}>📸 Capture Thumbnail</button>
-                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"var(--muted)", cursor:"pointer" }}>
+                <label className="sp-checkbox-row">
                   <input type="checkbox" checked={useKeyframes} onChange={(e) => setUseKeyframes(e.target.checked)} />
                   Keyframe Timeline
                 </label>
@@ -502,34 +502,34 @@ export default function App() {
             )}
 
             {/* View — always visible */}
-            <div style={{ marginTop:10, borderTop:"1px solid var(--border)", paddingTop:8 }}>
+            <div className="sp-view-block">
               <div className="sp-section-label">View</div>
-              <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--muted)", cursor:"pointer", marginBottom:3 }}>
+              <label className="sp-view-row">
                 <input type="checkbox" checked={showSkeleton} onChange={(e) => setShowSkeleton(e.target.checked)} /> Skeleton
               </label>
-              <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--muted)", cursor:"pointer", marginBottom:3 }}>
+              <label className="sp-view-row">
                 <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} /> Grid
               </label>
-              <label style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--muted)", cursor:"pointer" }}>
+              <label className="sp-view-row sp-view-row--last">
                 <input type="checkbox" checked={showStats} onChange={(e) => setShowStats(e.target.checked)} /> FPS Stats
               </label>
             </div>
           </div>
 
-          <div style={{ padding:"5px 10px", borderTop:"1px solid var(--border)", fontSize:10, color:"var(--muted)" }}>{status}</div>
+          <div className="sp-status-bar">{status}</div>
         </div>
 
         {/* Main viewport */}
         <div className="sp-main">
           <div className="sp-toolbar">
             <span className="sp-toolbar-title">SPX Puppet</span>
-            <span style={{ fontSize:10, color:"var(--muted)", marginRight:6 }}>{characters.length} chars</span>
-            {mocapOn && <span style={{ fontSize:10, color:"var(--danger)", marginRight:6 }}>LIVE {fps}fps</span>}
-            <button className="sp-btn" style={{ width:"auto", padding:"2px 8px", fontSize:10 }}
+            <span className="sp-toolbar-meta">{characters.length} chars</span>
+            {mocapOn && <span className="sp-toolbar-live">LIVE {fps}fps</span>}
+            <button className="sp-btn sp-toolbar-btn-sm"
               onClick={() => { const c = characters.find((ch) => ch.id === activeId); if(c) updateCharacter(activeId, { flipped:!(c.flipped||false) }); }}>
               Flip
             </button>
-            <button className="sp-btn sp-btn--teal" style={{ width:"auto", padding:"2px 8px", fontSize:10 }} onClick={handleExportMP4}>
+            <button className="sp-btn sp-btn--teal sp-toolbar-btn-sm" onClick={handleExportMP4}>
               Export WebM
             </button>
           </div>
@@ -607,15 +607,15 @@ export default function App() {
               />
             )}
             {activePanel === "draw" && (
-              <div style={{ position:"absolute", inset:0, zIndex:10, display:"flex", flexDirection:"column" }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 10px", background:"#0d1117", borderBottom:"1px solid #21262d", flexShrink:0 }}>
-                  <span style={{ fontSize:11, color:"#00ffc8", fontWeight:600 }}>Draw Character</span>
+              <div className="sp-draw-overlay">
+                <div className="sp-draw-header">
+                  <span className="sp-draw-title">Draw Character</span>
                   <button onClick={() => setActivePanel("characters")}
-                    style={{ padding:"2px 8px", border:"1px solid #21262d", borderRadius:4, background:"transparent", color:"#6b7280", cursor:"pointer", fontSize:11 }}>
+                    className="sp-draw-close">
                     Close
                   </button>
                 </div>
-                <div style={{ flex:1, overflow:"hidden" }}>
+                <div className="sp-draw-body">
                   <DrawPanel onExportCharacter={(char) => { addCharacter(char); setActivePanel("characters"); }} />
                 </div>
               </div>
@@ -676,7 +676,7 @@ export default function App() {
 
       {!mocapOn && (
         <video ref={videoRef} autoPlay muted playsInline
-          style={{ position:"absolute", opacity:0, width:1, height:1, pointerEvents:"none" }} />
+          className="sp-hidden-video" />
       )}
     </div>
   );
