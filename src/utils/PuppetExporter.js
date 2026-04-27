@@ -1,7 +1,7 @@
 
-// PuppetExporter.js — export MP4 (via MediaRecorder), GIF (via canvas frames), PNG sequence
+// PuppetExporter.js — export WebM (via MediaRecorder), GIF (via canvas frames), PNG sequence
 
-export async function exportMP4(canvas, durationSec=10, fps=30) {
+export async function exportWebM(canvas, durationSec=10, fps=30) {
   return new Promise((resolve, reject) => {
     try {
       const stream  = canvas.captureStream(fps);
@@ -40,3 +40,6 @@ export function downloadFile(blob, filename) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// Backward-compat alias — new callers should use exportWebM
+export const exportMP4 = exportWebM;

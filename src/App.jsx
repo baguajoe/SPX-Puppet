@@ -242,7 +242,7 @@ export default function App() {
           rec.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
             downloadFile(blob, "puppet_" + Date.now() + ".webm");
-            setStatus("MP4 exported!");
+            setStatus("WebM exported!");
           };
           rec.stop();
         }, 200);
@@ -478,7 +478,7 @@ export default function App() {
               Flip
             </button>
             <button className="sp-btn sp-btn--teal" style={{ width:"auto", padding:"2px 8px", fontSize:10 }} onClick={handleExportMP4}>
-              Export MP4
+              Export WebM
             </button>
           </div>
 
